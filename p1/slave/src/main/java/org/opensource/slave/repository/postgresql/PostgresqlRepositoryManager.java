@@ -40,7 +40,8 @@ public class PostgresqlRepositoryManager extends AbstractRepositoryManager {
 	}
 
 	@Override
-	public void createTargetDataTable(Connection con, String tableName) throws SQLException {
+	public void createTargetDataTable(String tableName) throws SQLException {
+		Connection con = this.getConnection();
 		String sql = "CREATE TABLE IF NOT EXISTS "+tableName+"("+
 						 "value INTEGER NOT NULL,"+
 						 "created TIMESTAMP NOT NULL"+

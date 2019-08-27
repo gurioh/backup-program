@@ -12,108 +12,105 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opensource.format.DataContainer;
 import org.opensource.master.common.Constant;
 import org.opensource.master.config.AppProperties;
+import org.opensource.master.format.DataContainer;
 import org.opensource.master.repository.AbstractRepositoryManager;
 
 public class Sender extends AbstractWorker{
 
 	private final static Logger logger = LogManager.getLogger(Sender.class);
 	private AbstractRepositoryManager repositoryManager = null;
-	private final int LIMIT = 100;
+	private int LIMIT = 100;
 	private Socket _socket;
-	
-	private String target_data_table = "myData";
 	private String sync_table = "sync_info";
+	private String target_data_table = "myData";
 	
-	
+	String slaveID = "";
+	ObjectInputStream ois = null;
+	ObjectOutputStream oos = null;
+	Connection con = null;
 	public Sender(AppProperties props, AbstractRepositoryManager repositoryManager) {
 		this.repositoryManager = repositoryManager; 
-		if(props.getPropsMap().get(Constant.DB_SYNC_TABLE_NAME) != null){
-			sync_table = props.getPropsMap().get(Constant.DB_SYNC_TABLE_NAME);
-    	}
 		if(props.getPropsMap().get(Constant.DB_TARGET_TABLE_NAME) != null){
     		target_data_table = props.getPropsMap().get(Constant.DB_TARGET_TABLE_NAME);
+    	}
+		if(props.getPropsMap().get(Constant.DB_DATA_LIMIT) != null){
+			LIMIT = Integer.parseInt(props.getPropsMap().get(Constant.DB_DATA_LIMIT));
+    	}
+		if(props.getPropsMap().get(Constant.DB_SYNC_TABLE_NAME) != null){
+			sync_table = props.getPropsMap().get(Constant.DB_SYNC_TABLE_NAME);
     	}
 	}
 	
 	public void setSocket(Socket p_socket) {
 		_socket = p_socket;
 		try {
-			final ObjectInputStream ois = new ObjectInputStream(_socket.getInputStream());
-            final String user = (String) ois.readObject();
-            System.out.println("Message Received: " + user);
-            final ObjectOutputStream oos = new ObjectOutputStream(_socket.getOutputStream());
-			final Connection con = repositoryManager.getConnection();
-			logger.info("Connection set");
+			ois = new ObjectInputStream(_socket.getInputStream());
+            slaveID = (String) ois.readObject();
+            logger.info("Connected client ID : " + slaveID);
+            oos = new ObjectOutputStream(_socket.getOutputStream());
 			
-			if (!repositoryManager.isExist(con, sync_table)){
-				repositoryManager.createSyncDataTable(con, sync_table);;
-			}
+            con = repositoryManager.getConnection();
+			logger.info("Client connection set");
 			
-			Runnable r1 = new Runnable() {
-				
-	            public void run() {
-	            	DataContainer dataContainer = new DataContainer();
-	            	String sql = buildSyncInfoSQL(user);
-	            	int offset = 0;
-	            	
-	            	try {
-	            		Statement st = con.createStatement();
-	            		ResultSet rs = st.executeQuery(sql);
-	            		
-	            		if (rs.next()) {
-	            			offset = rs.getInt(2);
-	                    }
-	            		sql = buildSelectDataSQL(String.valueOf(offset));
-	            		
-	            		rs = st.executeQuery(sql);
-	            		int count = 0;
-	            		while(rs.next()){
-	            			dataContainer.add(
-	            				new ArrayList<>(
-	            					Arrays.asList(
-	            							String.valueOf(rs.getInt(1)), 
-	            							rs.getTimestamp(2).toString()
-	            					)
-	            				)
-	            			);
-	            			count++;
-	            		}
-	            		
-	            		oos.writeObject(dataContainer);
-	            		
-	            		sql = buildUpdateOffsetSQL(user, offset+count);
-	            		int var = st.executeUpdate(sql);
-	            		
-					} catch (Exception e) {
-						setWorkerState(WorkerState.NON_ACTIVE);
-						try {
-							ois.close();
-							oos.close();
-						} catch (Exception e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-	            		try {
-							this.wait();
-							
-						} catch (InterruptedException e1) {
-							// TODO Auto-generated catch block
-							e1.printStackTrace();
-						}
-					}
-	            	
-	            }
-
-	        };
-	        service.scheduleAtFixedRate(r1, 0, 10000, TimeUnit.MILLISECONDS);
 		} catch (Exception e) {
 			e.printStackTrace();
-			this.logger.error(e);
-		} finally {
+			logger.error(e);
+		}finally {
 			
+		}
+	}
+	
+	@Override
+	public void run() {
+		DataContainer dataContainer = new DataContainer();
+		dataContainer.setSlaveID(slaveID);
+    	String sql = buildSyncInfoSQL(slaveID);
+    	int offset = 0;
+    	
+    	try {
+    		Statement st = con.createStatement();
+    		ResultSet rs = st.executeQuery(sql);
+    		
+    		if (rs.next()) {
+    			offset = rs.getInt(2);
+            }
+    		sql = buildSelectDataSQL(String.valueOf(offset));
+    		
+    		rs = st.executeQuery(sql);
+    		int count = 0;
+    		while(rs.next()){
+    			dataContainer.add(
+    				new ArrayList<>(
+    					Arrays.asList(
+    							String.valueOf(rs.getInt(1)), 
+    							rs.getTimestamp(2).toString()
+    					)
+    				)
+    			);
+    			count++;
+    		}
+    		
+    		oos.writeObject(dataContainer);
+    		
+    		sql = buildUpdateOffsetSQL(slaveID, offset+count);
+    		int var = st.executeUpdate(sql);
+    		
+		} catch (Exception e) {
+			setWorkerState(WorkerState.NON_ACTIVE);
+			try {
+				ois.close();
+				oos.close();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+    		try {
+				this.wait();
+				
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
 		}
 	}
 	

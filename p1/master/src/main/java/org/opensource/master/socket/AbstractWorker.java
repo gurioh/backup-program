@@ -6,8 +6,6 @@ import java.util.concurrent.ScheduledExecutorService;
 public abstract class AbstractWorker implements Runnable {
 	public String id;
 	
-	final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
-	
 	public enum WorkerState{
 		NON_ACTIVE, WORKING
 	}
@@ -35,14 +33,4 @@ public abstract class AbstractWorker implements Runnable {
 		this.id = id;
 	}
 	
-	public void killService(){
-		if(!service.isShutdown()){
-			service.shutdown();
-		}
-	}
-
-	public void run() {
-		System.out.println("Hello I m Sender");
-	}
-
 }

@@ -15,11 +15,22 @@ private final static Logger logger = LogManager.getLogger(ClientStarter.class);
 	}
 	
 	public static void main(String[] args) {
-		String propFile = "C:\\Users\\Henry\\Documents\\카카오톡 받은 파일\\Project1\\Project1\\master\\src\\main\\resources\\config\\app.properties";
-		AppProperties props = new AppProperties();
-		props.initialize();
-		props.loadConfig(propFile);
 		
-		Start(props);
+		String propFile = "";
+		for(String l_arg : args) {
+			if(l_arg.indexOf("") > -1) {
+				propFile = l_arg.split("=")[1];
+				
+				AppProperties props = new AppProperties();
+				props.initialize();
+				props.loadConfig(propFile);
+				
+				
+				Start(props);
+			} else {
+				logger.info("Put properties location");
+			}
+		}
+		logger.info("There are no properties info");
 	}
 }

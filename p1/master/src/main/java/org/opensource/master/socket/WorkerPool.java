@@ -44,15 +44,6 @@ public class WorkerPool {
 		this.activeThreadCount = activeThreadCount;
 	}
 	
-	public void removeNotActiveWorker(){
-		for(AbstractWorker worker : senderList){
-			if(worker.getWorkerState().equals(WorkerState.NON_ACTIVE)){
-				worker.killService();
-				senderList.remove(worker);
-			}
-		}
-	}
-
 	public AbstractWorker getWorker() {
 		AbstractWorker l_worker = null;
 		
@@ -64,8 +55,6 @@ public class WorkerPool {
 				l_worker.setId("Test");
 				this.senderList.add(l_worker);
 				this.activeThreadCount = this.senderList.size();
-				Thread l_thread = new Thread(l_worker);
-				l_thread.start();
 			} catch(Exception e) {
 				e.printStackTrace();
 			} 

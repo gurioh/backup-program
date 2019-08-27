@@ -16,6 +16,9 @@ public class Constant {
 	
 	public static final String DB_SYNC_TABLE_NAME = "SYNC_INFO";
 
+	public static final String DB_DATA_LIMIT = "DATA_LIMIT";
+
+	
 	
 	
 	

@@ -14,23 +14,24 @@ import org.apache.logging.log4j.Logger;
 import org.opensource.master.common.Constant;
 import org.opensource.master.config.AppProperties;
 import org.opensource.master.repository.AbstractRepositoryManager;
+import org.opensource.master.repository.postgresql.PostgresqlRepositoryManager;
 
-public class Generator implements Runnable{
+public class Generator{
 	private final static Logger logger = LogManager.getLogger(Generator.class);
 	private AbstractRepositoryManager repositoryManager = null;
 	private String target_data_table = "myData";
 	
-	public Generator(AppProperties props, AbstractRepositoryManager repositoryManager) {
-		this.repositoryManager = repositoryManager; 
+	public Generator(AppProperties props) {
+		this.repositoryManager = new PostgresqlRepositoryManager(props); 
 		if(props.getPropsMap().get(Constant.DB_TARGET_TABLE_NAME) != null){
     		target_data_table = props.getPropsMap().get(Constant.DB_TARGET_TABLE_NAME);
     	}
 	}
 	
-	public void run() {
+	public void start() {
 		try{
 			final Connection con = repositoryManager.getConnection();
-			logger.info("Connection set");
+			logger.info("DataGenerator DB connection set");
 			
 			if (!repositoryManager.isExist(con, target_data_table)){
 				repositoryManager.createTargetDataTable(con, target_data_table);
@@ -51,7 +52,7 @@ public class Generator implements Runnable{
 					}
 	            }
 	        };
-	        ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+	        ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
 	        service.scheduleAtFixedRate(runnable, 0, 100, TimeUnit.MILLISECONDS);
 		
 		}catch (Exception e) {

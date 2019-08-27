@@ -82,8 +82,9 @@ public class PostgresqlRepositoryManager extends AbstractRepositoryManager {
 	}
 
 	@Override
-	public void createSyncDataTable(Connection con, String name) throws SQLException {
+	public void createSyncDataTable(String name) throws SQLException {
 
+		Connection con = this.getConnection();
 		String sql = "CREATE TABLE IF NOT EXISTS " + name + "(" + "name text  PRIMARY KEY NOT NULL,"
 				+ "cur_offset Integer NOT NULL" + ")";
 		logger.info("[SQL]=" + sql);

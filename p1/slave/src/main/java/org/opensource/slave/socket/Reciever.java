@@ -15,7 +15,7 @@ import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.opensource.format.DataContainer;
+import org.opensource.master.format.DataContainer;
 import org.opensource.slave.common.Constant;
 import org.opensource.slave.config.AppProperties;
 import org.opensource.slave.repository.AbstractRepositoryManager;
@@ -23,9 +23,6 @@ import org.opensource.slave.repository.AbstractRepositoryManager;
 public class Reciever {
 	private final static Logger logger = LogManager.getLogger(Reciever.class);
 
-	private final int DEFAULT_PORT_NUM = 20000;
-	private final String DEFAULT_IP_ADDRESS = "127.0.0.1";
-	private final String DEFAULT_ID = "TEST";
 	private int PORT = 20000;
 	private String IP = "127.0.0.1";
 	private String ID = "TEST";
@@ -39,17 +36,17 @@ public class Reciever {
 		if(props.getPropsMap().get(Constant.MASTERPORT) != null){
 			PORT = Integer.valueOf(props.getPropsMap().get(Constant.MASTERPORT));
 		}else{
-			PORT = DEFAULT_PORT_NUM;
+			PORT = 20000;
 		}
 		if(props.getPropsMap().get(Constant.MASTERIP) != null){
 			IP = props.getPropsMap().get(Constant.MASTERIP);
 		}else{
-			IP = DEFAULT_IP_ADDRESS;
+			IP = "127.0.0.1";
 		}
 		if(props.getPropsMap().get(Constant.SLAVEID) != null){
 			ID = props.getPropsMap().get(Constant.SLAVEID);
 		}else{
-			ID = DEFAULT_IP_ADDRESS;
+			ID = "Slave";
 		}
 		
 		if(props.getPropsMap().get(Constant.DB_BACKUP_TABLE_NAME) != null){
@@ -65,16 +62,17 @@ public class Reciever {
 			socket = new Socket(IP,PORT);
 		
 			oos = new ObjectOutputStream(socket.getOutputStream());
-			System.out.println("Sending request to Socket Server");
 			oos.writeObject(ID);
+			logger.info("Sending request to Socket Server");
 			ois = new ObjectInputStream(socket.getInputStream());
 			
 			while(true){
 				if(!socket.isConnected()) break;
 		        DataContainer dataContainer = (DataContainer) ois.readObject();
-	            System.out.println("Message: " + dataContainer.getRowCount());
-	            
-	            backUpData(dataContainer);
+		        if(dataContainer.getSlaveID().equals(ID)){
+		        	logger.info("Reciever Data Count: " + dataContainer.getRowCount());
+	            	backUpData(dataContainer);
+		        }
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -94,10 +92,6 @@ public class Reciever {
 		Connection con = null;
 		try {
 			con = repositoryManager.getConnection();
-			
-			if (!repositoryManager.isExist(con, back_data_table)){
-				repositoryManager.createTargetDataTable(con, back_data_table);
-			}
 			
 			Statement stmt = con.createStatement();
             con.setAutoCommit(false);
